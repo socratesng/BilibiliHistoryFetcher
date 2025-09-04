@@ -1,0 +1,36 @@
+FROM alpine:latest
+
+# 安装必要的包：ffmpeg、tini、python3、glibc-i18n（用于UTF-8支持）
+RUN apk update && \
+    apk add --no-cache \
+    ffmpeg \
+    tini \
+    python3 \
+    libc6-compat \
+    icu-data-full \
+    lang
+
+# 设置中文UTF-8语言环境
+RUN echo "export LANG=zh_CN.UTF-8" >> /etc/profile && \
+    echo "export LC_ALL=zh_CN.UTF-8" >> /etc/profile
+
+# 设置语言环境变量
+ENV LANG=zh_CN.UTF-8
+ENV LC_ALL=zh_CN.UTF-8
+
+# 导入基于 Alpine 的 uv 镜像
+COPY --from=ghcr.io/astral-sh/uv:0.6.12-alpine /uv /uvx /bin/
+
+# 设置工作目录
+WORKDIR /app
+COPY . .
+
+# 使用 uv 安装依赖
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync
+
+# 使用 tini 作为容器入口点
+ENTRYPOINT ["/bin/tini", "--"]
+
+# 启动应用
+CMD ["uv", "run", "main.py"]
